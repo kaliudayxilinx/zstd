@@ -98,29 +98,38 @@ size_t FSE_buildCTable_wksp(FSE_CTable* ct, const short* normalizedCounter, unsi
     U32 highThreshold = tableSize-1;
 
     /* CTable header */
-    if (((size_t)1 << tableLog) * sizeof(FSE_FUNCTION_TYPE) > wkspSize) return ERROR(tableLog_tooLarge);
+    if (((size_t)1 << tableLog) * sizeof(FSE_FUNCTION_TYPE) > wkspSize) 
+        return ERROR(tableLog_tooLarge);
+    
     tableU16[-2] = (U16) tableLog;
     tableU16[-1] = (U16) maxSymbolValue;
+    
     assert(tableLog < 16);   /* required for the threshold strategy to work */
 
     /* For explanations on how to distribute symbol values over the table :
     *  http://fastcompression.blogspot.fr/2014/02/fse-distributing-symbol-values.html */
 
     /* symbol start positions */
-    {   U32 u;
+    {   
+        U32 u;
         cumul[0] = 0;
         for (u=1; u<=maxSymbolValue+1; u++) {
+            
             if (normalizedCounter[u-1]==-1) {  /* Low proba symbol */
                 cumul[u] = cumul[u-1] + 1;
                 tableSymbol[highThreshold--] = (FSE_FUNCTION_TYPE)(u-1);
             } else {
                 cumul[u] = cumul[u-1] + normalizedCounter[u-1];
-        }   }
+        
+            }
+   
+        }
         cumul[maxSymbolValue+1] = tableSize+1;
     }
 
     /* Spread symbols */
-    {   U32 position = 0;
+    {
+        U32 position = 0;
         U32 symbol;
         for (symbol=0; symbol<=maxSymbolValue; symbol++) {
             int nbOccurences;
@@ -143,7 +152,8 @@ size_t FSE_buildCTable_wksp(FSE_CTable* ct, const short* normalizedCounter, unsi
     }
 
     /* Build Symbol Transformation Table */
-    {   unsigned total = 0;
+    {
+        unsigned total = 0;
         unsigned s;
         for (s=0; s<=maxSymbolValue; s++) {
             switch (normalizedCounter[s])
