@@ -134,10 +134,13 @@ size_t FSE_buildCTable_wksp(FSE_CTable* ct, const short* normalizedCounter, unsi
     }
 
     /* Build table */
-    {   U32 u; for (u=0; u<tableSize; u++) {
-        FSE_FUNCTION_TYPE s = tableSymbol[u];   /* note : static analyzer may not understand tableSymbol is properly initialized */
-        tableU16[cumul[s]++] = (U16) (tableSize+u);   /* TableU16 : sorted by symbol order; gives next state value */
-    }   }
+    {   
+        U32 u; 
+        for (u=0; u<tableSize; u++) {
+            FSE_FUNCTION_TYPE s = tableSymbol[u];   /* note : static analyzer may not understand tableSymbol is properly initialized */
+            tableU16[cumul[s]++] = (U16) (tableSize+u);   /* TableU16 : sorted by symbol order; gives next state value */
+        }   
+    }
 
     /* Build Symbol Transformation Table */
     {   unsigned total = 0;
@@ -163,19 +166,10 @@ size_t FSE_buildCTable_wksp(FSE_CTable* ct, const short* normalizedCounter, unsi
                     symbolTT[s].deltaNbBits = (maxBitsOut << 16) - minStatePlus;
                     symbolTT[s].deltaFindState = total - normalizedCounter[s];
                     total +=  normalizedCounter[s];
-    }   }   }   }
-
-#if 0  /* debug : symbol costs */
-    DEBUGLOG(5, "\n --- table statistics : ");
-    {   U32 symbol;
-        for (symbol=0; symbol<=maxSymbolValue; symbol++) {
-            DEBUGLOG(5, "%3u: w=%3i,   maxBits=%u, fracBits=%.2f",
-                symbol, normalizedCounter[symbol],
-                FSE_getMaxNbBits(symbolTT, symbol),
-                (double)FSE_bitCost(symbolTT, tableLog, symbol, 8) / 256);
-        }
+                }   
+            }   
+        } // For loop ends here   
     }
-#endif
 
     return 0;
 }

@@ -1685,6 +1685,7 @@ static size_t ZSTD_decompressBlock_internal(ZSTD_DCtx* dctx,
 
     /* Decode literals section */
     {   size_t const litCSize = ZSTD_decodeLiteralsBlock(dctx, src, srcSize);
+        printf("litCSize %d \n", litCSize);
         DEBUGLOG(5, "ZSTD_decodeLiteralsBlock : %u", (U32)litCSize);
         if (ZSTD_isError(litCSize)) return litCSize;
         ip += litCSize;
@@ -1697,6 +1698,8 @@ static size_t ZSTD_decompressBlock_internal(ZSTD_DCtx* dctx,
         if (ZSTD_isError(seqHSize)) return seqHSize;
         ip += seqHSize;
         srcSize -= seqHSize;
+
+        printf("nbSeq %d \n", nbSeq);        
 
         if ( (!frame || dctx->fParams.windowSize > (1<<24))
           && (nbSeq>0) ) {  /* could probably use a larger nbSeq limit */
