@@ -887,6 +887,7 @@ int main(int argCount, const char* argv[])
     FIO_setNotificationLevel(g_displayLevel);
     if (operation==zom_compress) {
 #ifndef ZSTD_NOCOMPRESS
+        printf("nbWorkers %d blockSize %d ldmFlag %d g_ldmHashLog %d g_ldmMinMatch %d filenameIdx %d\n", nbWorkers, (U32)blockSize, ldmFlag, g_ldmHashLog, g_ldmMinMatch, filenameIdx);
         FIO_setNbWorkers(nbWorkers);
         FIO_setBlockSize((U32)blockSize);
         FIO_setLdmFlag(ldmFlag);

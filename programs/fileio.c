@@ -756,6 +756,7 @@ FIO_compressZstdFrame(const cRess_t* ressPtr,
         /* Fill input Buffer */
         size_t const inSize = fread(ress.srcBuffer, (size_t)1, ress.srcBufferSize, srcFile);
         ZSTD_inBuffer inBuff = { ress.srcBuffer, inSize, 0 };
+        printf("ress.srcBufferSize %d inSize %d \n", ress.srcBufferSize, inSize);
         DISPLAYLEVEL(6, "fread %u bytes from source \n", (U32)inSize);
         *readsize += inSize;
 
@@ -777,6 +778,7 @@ FIO_compressZstdFrame(const cRess_t* ressPtr,
                 compressedfilesize += outBuff.pos;
             }
             if (READY_FOR_UPDATE()) {
+                printf("Ready for update \n");
                 ZSTD_frameProgression const zfp = ZSTD_getFrameProgression(ress.cctx);
                 double const cShare = (double)zfp.produced / (zfp.consumed + !zfp.consumed/*avoid div0*/) * 100;
                 if (g_displayLevel >= 3) {
@@ -794,7 +796,9 @@ FIO_compressZstdFrame(const cRess_t* ressPtr,
                     DELAY_NEXT_UPDATE();
                 }
             }
+            printf("inBuff position %d inbuffer size %d directive %d ZSTD_e_end %d result %d\n", inBuff.pos, inBuff.size, directive, ZSTD_e_end, result);
         }
+        printf("Done with compress \n");
     } while (directive != ZSTD_e_end);
 
     return compressedfilesize;
@@ -814,12 +818,13 @@ FIO_compressFilename_internal(cRess_t ress,
     U64 compressedfilesize = 0;
     U64 const fileSize = UTIL_getFileSize(srcFileName);
     DISPLAYLEVEL(5, "%s: %u bytes \n", srcFileName, (U32)fileSize);
-
+    printf("g_compressiontype %d \n", g_compressionType);
     /* compression format selection */
     switch (g_compressionType) {
         default:
         case FIO_zstdCompression:
             compressedfilesize = FIO_compressZstdFrame(&ress, srcFileName, fileSize, compressionLevel, &readsize);
+            printf("ZSTD compression %s \n", __FUNCTION__);
             break;
 
         case FIO_gzipCompression:
@@ -997,6 +1002,7 @@ int FIO_compressMultipleFilenames(const char** inFileNamesTable, unsigned nbFile
         }
     } else {
         unsigned u;
+        printf("nbFiles %d \n", nbFiles);
         for (u=0; u<nbFiles; u++) {
             size_t const ifnSize = strlen(inFileNamesTable[u]);
             if (dfnSize <= ifnSize+suffixSize+1) {  /* resize name buffer */
@@ -1009,7 +1015,8 @@ int FIO_compressMultipleFilenames(const char** inFileNamesTable, unsigned nbFile
             strcpy(dstFileName, inFileNamesTable[u]);
             strcat(dstFileName, suffix);
             missed_files += FIO_compressFilename_dstFile(ress, dstFileName, inFileNamesTable[u], compressionLevel);
-    }   }
+        }   
+    }
 
     FIO_freeCResources(ress);
     free(dstFileName);

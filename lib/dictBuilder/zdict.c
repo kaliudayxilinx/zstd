@@ -593,6 +593,8 @@ static void ZDICT_countEStats(EStats_ress_t esr, ZSTD_parameters params,
                               const void* src, size_t srcSize,
                               U32 notificationLevel)
 {
+
+    printf("I am in %s(\n", __FUNCTION__);
     size_t const blockSizeMax = MIN (ZSTD_BLOCKSIZE_MAX, 1 << params.cParams.windowLog);
     size_t cSize;
 

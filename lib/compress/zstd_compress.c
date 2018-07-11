@@ -1644,12 +1644,15 @@ void ZSTD_seqToCodes(const seqStore_t* seqStorePtr)
     BYTE* const mlCodeTable = seqStorePtr->mlCode;
     U32 const nbSeq = (U32)(seqStorePtr->sequences - seqStorePtr->sequencesStart);
     U32 u;
+    
+    printf("nbSeq %d \n", nbSeq); 
     for (u=0; u<nbSeq; u++) {
         U32 const llv = sequences[u].litLength;
         U32 const mlv = sequences[u].matchLength;
         llCodeTable[u] = (BYTE)ZSTD_LLcode(llv);
         ofCodeTable[u] = (BYTE)ZSTD_highbit32(sequences[u].offset);
         mlCodeTable[u] = (BYTE)ZSTD_MLcode(mlv);
+        printf("u=%d \t llength/llcode %d/%d mlength/mcode %d/%d olength/ocode %d/%d \n", u, llv, llCodeTable[u], mlv, mlCodeTable[u], sequences[u].offset, ofCodeTable[u]);
     }
     if (seqStorePtr->longLengthID==1)
         llCodeTable[seqStorePtr->longLengthPos] = MaxLL;
@@ -2018,6 +2021,7 @@ size_t ZSTD_encodeSequences(
 {
 #if DYNAMIC_BMI2
     if (bmi2) {
+        printf("bmi2 \n");
         return ZSTD_encodeSequences_bmi2(dst, dstCapacity,
                                          CTable_MatchLength, mlCodeTable,
                                          CTable_OffsetBits, ofCodeTable,
@@ -2061,7 +2065,7 @@ MEM_STATIC size_t ZSTD_compressSequences_internal(seqStore_t* seqStorePtr,
     
     size_t const nbSeq = seqStorePtr->sequences - seqStorePtr->sequencesStart;
     
-    printf("nbSeq %d \n", nbSeq);
+    //printf("nbSeq %d \n", nbSeq);
 
     BYTE* seqHead;
     BYTE* lastNCount = NULL;
@@ -2072,14 +2076,15 @@ MEM_STATIC size_t ZSTD_compressSequences_internal(seqStore_t* seqStorePtr,
     {   
         const BYTE* const literals = seqStorePtr->litStart;
         size_t const litSize = seqStorePtr->lit - literals;
-        int const disableLiteralCompression = (cctxParams->cParams.strategy == ZSTD_fast) && (cctxParams->cParams.targetLength > 0);
+        //int const disableLiteralCompression = (cctxParams->cParams.strategy == ZSTD_fast) && (cctxParams->cParams.targetLength > 0);
+        int const disableLiteralCompression = 1; 
         size_t const cSize = ZSTD_compressLiterals(
                                     &prevEntropy->huf, &nextEntropy->huf,
                                     cctxParams->cParams.strategy, disableLiteralCompression,
                                     op, dstCapacity,
                                     literals, litSize,
                                     workspace, bmi2);
-        printf("litSize %d \n", cSize);
+        //printf("litSize %d \n", cSize);
         if (ZSTD_isError(cSize))
           return cSize;
         assert(cSize <= dstCapacity);
@@ -2314,6 +2319,8 @@ static size_t ZSTD_compressBlock_internal(ZSTD_CCtx* zc,
                                         void* dst, size_t dstCapacity,
                                         const void* src, size_t srcSize)
 {
+
+    printf ("I am in %s \n", __FUNCTION__);
     ZSTD_matchState_t* const ms = &zc->blockState.matchState;
     DEBUGLOG(5, "ZSTD_compressBlock_internal (dstCapacity=%zu, dictLimit=%u, nextToUpdate=%u)",
                 dstCapacity, ms->window.dictLimit, ms->nextToUpdate);
@@ -2555,6 +2562,7 @@ static size_t ZSTD_compressContinue_internal (ZSTD_CCtx* cctx,
                         const void* src, size_t srcSize,
                                U32 frame, U32 lastFrameChunk)
 {
+    //printf("frame %d \n", frame);
     ZSTD_matchState_t* ms = &cctx->blockState.matchState;
     size_t fhSize = 0;
 
@@ -3498,6 +3506,7 @@ size_t ZSTD_compressStream_generic(ZSTD_CStream* zcs,
                                    ZSTD_inBuffer* input,
                                    ZSTD_EndDirective const flushMode)
 {
+    //printf("compressStream_generic entered \n");
     const char* const istart = (const char*)input->src;
     const char* const iend = istart + input->size;
     const char* ip = istart + input->pos;
@@ -3516,6 +3525,7 @@ size_t ZSTD_compressStream_generic(ZSTD_CStream* zcs,
     assert(input->pos <= input->size);
 
     while (someMoreWork) {
+        //printf("streamStage %d \n", zcs->streamStage);
         switch(zcs->streamStage)
         {
         case zcss_init:
@@ -3526,6 +3536,7 @@ size_t ZSTD_compressStream_generic(ZSTD_CStream* zcs,
             if ( (flushMode == ZSTD_e_end)
               && ((size_t)(oend-op) >= ZSTD_compressBound(iend-ip))  /* enough dstCapacity */
               && (zcs->inBuffPos == 0) ) {
+                //printf("Inside flushmode %d ZSTD_e_end %d \n", flushMode, ZSTD_e_end);
                 /* shortcut to compression pass directly into output buffer */
                 size_t const cSize = ZSTD_compressEnd(zcs,
                                                 op, oend-op, ip, iend-ip);
@@ -3537,6 +3548,7 @@ size_t ZSTD_compressStream_generic(ZSTD_CStream* zcs,
                 ZSTD_CCtx_reset(zcs);
                 someMoreWork = 0; break;
             }
+            //printf("After flush mode \n");
             /* complete loading into inBuffer */
             {   size_t const toLoad = zcs->inBuffTarget - zcs->inBuffPos;
                 size_t const loaded = ZSTD_limitCopy(
@@ -3555,6 +3567,7 @@ size_t ZSTD_compressStream_generic(ZSTD_CStream* zcs,
                     someMoreWork = 0; break;
                 }
             }
+            //printf("After complete loading into buffer \n");
             /* compress current block (note : this stage cannot be stopped in the middle) */
             DEBUGLOG(5, "stream compression stage (flushMode==%u)", flushMode);
             {   void* cDst;
@@ -3571,17 +3584,25 @@ size_t ZSTD_compressStream_generic(ZSTD_CStream* zcs,
                                     zcs->inBuff + zcs->inToCompress, iSize) :
                         ZSTD_compressContinue(zcs, cDst, oSize,
                                     zcs->inBuff + zcs->inToCompress, iSize);
-                if (ZSTD_isError(cSize)) return cSize;
+                
+                if (ZSTD_isError(cSize)) 
+                    return cSize;
+                
                 zcs->frameEnded = lastBlock;
+                
                 /* prepare next block */
                 zcs->inBuffTarget = zcs->inBuffPos + zcs->blockSize;
+                
                 if (zcs->inBuffTarget > zcs->inBuffSize)
                     zcs->inBuffPos = 0, zcs->inBuffTarget = zcs->blockSize;
-                DEBUGLOG(5, "inBuffTarget:%u / inBuffSize:%u",
-                         (U32)zcs->inBuffTarget, (U32)zcs->inBuffSize);
+                
+                DEBUGLOG(5, "inBuffTarget:%u / inBuffSize:%u",(U32)zcs->inBuffTarget, (U32)zcs->inBuffSize);
+
                 if (!lastBlock)
                     assert(zcs->inBuffTarget <= zcs->inBuffSize);
+
                 zcs->inToCompress = zcs->inBuffPos;
+                
                 if (cDst == op) {  /* no need to flush */
                     op += cSize;
                     if (zcs->frameEnded) {
@@ -3597,6 +3618,7 @@ size_t ZSTD_compressStream_generic(ZSTD_CStream* zcs,
             }
 	    /* fall-through */
         case zcss_flush:
+            //printf("************ In Flush Stage *************** \n");
             DEBUGLOG(5, "flush stage");
             {   size_t const toFlush = zcs->outBuffContentSize - zcs->outBuffFlushedSize;
                 size_t const flushed = ZSTD_limitCopy(op, oend-op,
@@ -3664,9 +3686,10 @@ size_t ZSTD_compress_generic (ZSTD_CCtx* cctx,
         memset(&cctx->prefixDict, 0, sizeof(cctx->prefixDict));  /* single usage */
         assert(prefixDict.dict==NULL || cctx->cdict==NULL);   /* only one can be set */
         DEBUGLOG(4, "ZSTD_compress_generic : transparent init stage");
-        if (endOp == ZSTD_e_end) cctx->pledgedSrcSizePlusOne = input->size + 1;  /* auto-fix pledgedSrcSize */
-        params.cParams = ZSTD_getCParamsFromCCtxParams(
-                &cctx->requestedParams, cctx->pledgedSrcSizePlusOne-1, 0 /*dictSize*/);
+        if (endOp == ZSTD_e_end) 
+            cctx->pledgedSrcSizePlusOne = input->size + 1;  /* auto-fix pledgedSrcSize */
+        
+        params.cParams = ZSTD_getCParamsFromCCtxParams(&cctx->requestedParams, cctx->pledgedSrcSizePlusOne-1, 0 /*dictSize*/);
 
 
 #ifdef ZSTD_MULTITHREAD
@@ -3697,7 +3720,8 @@ size_t ZSTD_compress_generic (ZSTD_CCtx* cctx,
                             params, cctx->pledgedSrcSizePlusOne-1) );
             assert(cctx->streamStage == zcss_load);
             assert(cctx->appliedParams.nbWorkers == 0);
-    }   }
+        }   
+    }
 
     /* compression stage */
 #ifdef ZSTD_MULTITHREAD
