@@ -1495,7 +1495,8 @@ static size_t ZSTD_noCompressLiterals (void* dst, size_t dstCapacity, const void
     BYTE* const ostart = (BYTE* const)dst;
     U32   const flSize = 1 + (srcSize>31) + (srcSize>4095);
 
-    if (srcSize + flSize > dstCapacity) return ERROR(dstSize_tooSmall);
+    if (srcSize + flSize > dstCapacity) 
+        return ERROR(dstSize_tooSmall);
 
     switch(flSize)
     {
@@ -1908,22 +1909,35 @@ ZSTD_encodeSequences_body(
     FSE_initCState2(&stateMatchLength, CTable_MatchLength, mlCodeTable[nbSeq-1]);
     FSE_initCState2(&stateOffsetBits,  CTable_OffsetBits,  ofCodeTable[nbSeq-1]);
     FSE_initCState2(&stateLitLength,   CTable_LitLength,   llCodeTable[nbSeq-1]);
+
+    printf ("LitLength \n");
     BIT_addBits(&blockStream, sequences[nbSeq-1].litLength, LL_bits[llCodeTable[nbSeq-1]]);
-    if (MEM_32bits()) BIT_flushBits(&blockStream);
+
+    if (MEM_32bits()) 
+        BIT_flushBits(&blockStream);
+    
+    printf ("Match Length \n");
     BIT_addBits(&blockStream, sequences[nbSeq-1].matchLength, ML_bits[mlCodeTable[nbSeq-1]]);
-    if (MEM_32bits()) BIT_flushBits(&blockStream);
+    
+    if (MEM_32bits()) 
+        BIT_flushBits(&blockStream);
+
     if (longOffsets) {
         U32 const ofBits = ofCodeTable[nbSeq-1];
         int const extraBits = ofBits - MIN(ofBits, STREAM_ACCUMULATOR_MIN-1);
+
         if (extraBits) {
             BIT_addBits(&blockStream, sequences[nbSeq-1].offset, extraBits);
             BIT_flushBits(&blockStream);
         }
+
         BIT_addBits(&blockStream, sequences[nbSeq-1].offset >> extraBits,
                     ofBits - extraBits);
     } else {
+
         BIT_addBits(&blockStream, sequences[nbSeq-1].offset, ofCodeTable[nbSeq-1]);
     }
+
     BIT_flushBits(&blockStream);
 
     {   size_t n;
@@ -1942,38 +1956,62 @@ ZSTD_encodeSequences_body(
                                                                             /* (7)*/  /* (7)*/
             FSE_encodeSymbol(&blockStream, &stateOffsetBits, ofCode);       /* 15 */  /* 15 */
             FSE_encodeSymbol(&blockStream, &stateMatchLength, mlCode);      /* 24 */  /* 24 */
+
             if (MEM_32bits()) BIT_flushBits(&blockStream);                  /* (7)*/
             FSE_encodeSymbol(&blockStream, &stateLitLength, llCode);        /* 16 */  /* 33 */
+
             if (MEM_32bits() || (ofBits+mlBits+llBits >= 64-7-(LLFSELog+MLFSELog+OffFSELog)))
                 BIT_flushBits(&blockStream);                                /* (7)*/
+
             BIT_addBits(&blockStream, sequences[n].litLength, llBits);
-            if (MEM_32bits() && ((llBits+mlBits)>24)) BIT_flushBits(&blockStream);
+
+            if (MEM_32bits() && ((llBits+mlBits)>24)) 
+                BIT_flushBits(&blockStream);
+
             BIT_addBits(&blockStream, sequences[n].matchLength, mlBits);
-            if (MEM_32bits() || (ofBits+mlBits+llBits > 56)) BIT_flushBits(&blockStream);
+
+            if (MEM_32bits() || (ofBits+mlBits+llBits > 56))
+                BIT_flushBits(&blockStream);
+            
             if (longOffsets) {
+    
                 int const extraBits = ofBits - MIN(ofBits, STREAM_ACCUMULATOR_MIN-1);
+
                 if (extraBits) {
                     BIT_addBits(&blockStream, sequences[n].offset, extraBits);
                     BIT_flushBits(&blockStream);                            /* (7)*/
                 }
+
                 BIT_addBits(&blockStream, sequences[n].offset >> extraBits,
                             ofBits - extraBits);                            /* 31 */
             } else {
+
                 BIT_addBits(&blockStream, sequences[n].offset, ofBits);     /* 31 */
             }
+    
             BIT_flushBits(&blockStream);                                    /* (7)*/
-    }   }
+        }   
+    }
 
     DEBUGLOG(6, "ZSTD_encodeSequences: flushing ML state with %u bits", stateMatchLength.stateLog);
+
     FSE_flushCState(&blockStream, &stateMatchLength);
+    
     DEBUGLOG(6, "ZSTD_encodeSequences: flushing Off state with %u bits", stateOffsetBits.stateLog);
+    
     FSE_flushCState(&blockStream, &stateOffsetBits);
+    
     DEBUGLOG(6, "ZSTD_encodeSequences: flushing LL state with %u bits", stateLitLength.stateLog);
+    
     FSE_flushCState(&blockStream, &stateLitLength);
 
-    {   size_t const streamSize = BIT_closeCStream(&blockStream);
-        if (streamSize==0) return ERROR(dstSize_tooSmall);   /* not enough space */
+    {   
+        size_t const streamSize = BIT_closeCStream(&blockStream);
+
+        if (streamSize==0) 
+            return ERROR(dstSize_tooSmall);   /* not enough space */
         return streamSize;
+
     }
 }
 
@@ -2044,6 +2082,8 @@ MEM_STATIC size_t ZSTD_compressSequences_internal(seqStore_t* seqStorePtr,
                               void* dst, size_t dstCapacity, U32* workspace,
                               const int bmi2)
 {
+
+    printf("dstCapacity %d \n", dstCapacity);
     const int longOffsets = cctxParams->cParams.windowLog > STREAM_ACCUMULATOR_MIN;
     ZSTD_strategy const strategy = cctxParams->cParams.strategy;
     U32 count[MaxSeq+1];
@@ -2084,7 +2124,7 @@ MEM_STATIC size_t ZSTD_compressSequences_internal(seqStore_t* seqStorePtr,
                                     op, dstCapacity,
                                     literals, litSize,
                                     workspace, bmi2);
-        //printf("litSize %d \n", cSize);
+        printf("litSize %d \n", cSize);
         if (ZSTD_isError(cSize))
           return cSize;
         assert(cSize <= dstCapacity);
@@ -2124,10 +2164,13 @@ MEM_STATIC size_t ZSTD_compressSequences_internal(seqStore_t* seqStorePtr,
         assert(!(LLtype < set_compressed && nextEntropy->fse.litlength_repeatMode != FSE_repeat_none)); /* We don't copy tables */
 
         {  // printf("LL called \n");
-            size_t const countSize = ZSTD_buildCTable(op, oend - op, CTable_LitLength, LLFSELog, (symbolEncodingType_e)LLtype,
-                                                      count, max, llCodeTable, nbSeq, LL_defaultNorm, LL_defaultNormLog, MaxLL,
-                                                      prevEntropy->fse.litlengthCTable, sizeof(prevEntropy->fse.litlengthCTable),
-                                                      workspace, HUF_WORKSPACE_SIZE);
+            size_t const countSize = FSE_buildCTable_wksp(CTable_LitLength, 
+                                                          LL_defaultNorm, 
+                                                          MaxLL, 
+                                                          LL_defaultNormLog, 
+                                                          workspace, 
+                                                          HUF_WORKSPACE_SIZE);
+
             if (ZSTD_isError(countSize)) 
                 return countSize;
           
@@ -2148,10 +2191,12 @@ MEM_STATIC size_t ZSTD_compressSequences_internal(seqStore_t* seqStorePtr,
      
        {  
             //printf("Offset called \n"); 
-            size_t const countSize = ZSTD_buildCTable(op, oend - op, CTable_OffsetBits, OffFSELog, (symbolEncodingType_e)Offtype,
-                                                    count, max, ofCodeTable, nbSeq, OF_defaultNorm, OF_defaultNormLog, DefaultMaxOff,
-                                                    prevEntropy->fse.offcodeCTable, sizeof(prevEntropy->fse.offcodeCTable),
-                                                    workspace, HUF_WORKSPACE_SIZE);
+            size_t const countSize = FSE_buildCTable_wksp(CTable_OffsetBits, 
+                                                          OF_defaultNorm, 
+                                                          DefaultMaxOff, 
+                                                          OF_defaultNormLog, 
+                                                          workspace, 
+                                                          HUF_WORKSPACE_SIZE);
             if (ZSTD_isError(countSize)) 
                 return countSize;
             
@@ -2173,10 +2218,14 @@ MEM_STATIC size_t ZSTD_compressSequences_internal(seqStore_t* seqStorePtr,
     
         {   
             //printf("ML called \n"); 
-            size_t const countSize = ZSTD_buildCTable(op, oend - op, CTable_MatchLength, MLFSELog, (symbolEncodingType_e)MLtype,
-                                                    count, max, mlCodeTable, nbSeq, ML_defaultNorm, ML_defaultNormLog, MaxML,
-                                                    prevEntropy->fse.matchlengthCTable, sizeof(prevEntropy->fse.matchlengthCTable),
-                                                    workspace, HUF_WORKSPACE_SIZE);
+            size_t const countSize = FSE_buildCTable_wksp(CTable_MatchLength, 
+                                                          ML_defaultNorm, 
+                                                          MaxML, 
+                                                          ML_defaultNormLog,
+                                                          workspace, 
+                                                          HUF_WORKSPACE_SIZE);
+
+            
             if (ZSTD_isError(countSize)) 
                 return countSize;
             
